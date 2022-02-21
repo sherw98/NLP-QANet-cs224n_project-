@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -133,4 +132,3 @@ dmypy.json
 .idea/
 __pycache__
 .texpadtmp/
->>>>>>> f75c3e5fcaf21ea7a01d2303604dbfcfe5cc568b
