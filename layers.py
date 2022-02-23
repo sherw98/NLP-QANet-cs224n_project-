@@ -60,7 +60,9 @@ class FullEmbedding(nn.Module):
 
         # convolution for chars
         self.conv1d = nn.Sequential(
-            nn.Conv1d(char_vectors.size(1), 128, 7),
+            nn.Conv1d(in_channels = char_vectors.size(1),
+                      out_channels= 128, 
+                      kernel_size = 7),
             nn.ReLU(),
             nn.MaxPool1d(hidden_size),
             nn.Dropout(drop_prob)
@@ -70,7 +72,7 @@ class FullEmbedding(nn.Module):
 
     def forward(self, words, chars):
         # words
-        words_emb = self.embed_word(words)   # (batch_size, seq_len, embed_size)
+        words_emb = self.embed_word(words)   # (batch_size, seq_len, embed_size), [64, 375, 300]
         print("")
         print("words_emb shape before proj: {}".format(words_emb.shape))
         words_emb = F.dropout(words_emb, self.drop_prob, self.training)
@@ -78,7 +80,7 @@ class FullEmbedding(nn.Module):
         
 
         # chars
-        chars_emb = self.embed_char(chars) # (batch_size, ?, embed_size)
+        chars_emb = self.embed_char(chars) # (batch_size, seq_len, word_len, embed_size), [64, 375, 16, 64]
         print("")
         print("chars_emb shape before conv: {}".format(chars_emb.shape))
         chars_emb = self.conv1d(chars_emb)
