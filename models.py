@@ -93,7 +93,7 @@ class BiDAF_character(nn.Module):
         drop_prob (float): Dropout probability.
     """
     def __init__(self, word_vectors, char_vectors, hidden_size, drop_prob=0.):
-        super(BiDAF, self).__init__()
+        super(BiDAF_character, self).__init__()
         self.emb = layers.FullEmbedding(word_vectors=word_vectors,
                                         char_vectors=char_vectors,
                                     hidden_size=hidden_size,
