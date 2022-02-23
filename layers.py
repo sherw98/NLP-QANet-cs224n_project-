@@ -93,7 +93,7 @@ class FullEmbedding(nn.Module):
         chars_emb = self.conv1d(chars_emb)
         print("")
         print("chars_emb after conv: {}".format(chars_emb.shape))
-        chars_emb = chars_emb.view(-1, chars.size(1), hidden_size) # issue here prob
+        chars_emb = chars_emb.view(batch_size, seqlen, -1) # issue here prob
 
         # concated
         concat_emb = torch.concat((words_emb, chars_emb), dim = 2)
