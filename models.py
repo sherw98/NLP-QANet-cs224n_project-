@@ -5,6 +5,7 @@ Author:
 """
 
 import layers
+import QANetLayers
 import torch
 import torch.nn as nn
 
