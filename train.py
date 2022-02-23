@@ -46,19 +46,19 @@ def main(args):
 
     # Get model
     log.info('Building model...')
-    if(args.model_type == "baseline"){
+    if(args.model_type == "baseline"):
         model = BiDAF(word_vectors=word_vectors,
                     hidden_size=args.hidden_size,
                     drop_prob=args.drop_prob)
-    }elif(args.model_type == "bidaf_char"){
+    elif(args.model_type == "bidaf_char"):
         char_vectors = util.torch_from_json(args.char_emb_file)
         model = BiDAF(word_vectors=word_vectors,
                     char_vectors=char_vectors,
                     hidden_size=args.hidden_size,
                     drop_prob=args.drop_prob)
-    }else{
+    else:
         raise Exception("Model provided not valid")
-    }
+    
 
     model = nn.DataParallel(model, args.gpu_ids)
     if args.load_path:

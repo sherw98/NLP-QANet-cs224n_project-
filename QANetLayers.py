@@ -67,7 +67,7 @@ class CausalSelfAttention(nn.Module):
 class QA_Conv1d(nn.Module):
     """ Conv layer for QA Net"""
     def __init__(self, in_channels, out_channels, kernel_size = 1,
-                 stride = 1, padding = 0, groups = 1, relu = False, bias = False)
+                 stride = 1, padding = 0, groups = 1, relu = False, bias = False):
         super().__init__()
 
         self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, 
