@@ -156,7 +156,7 @@ def main(args):
                     # Evaluate and save checkpoint
                     log.info(f'Evaluating at step {step}...')
                     ema.assign(model)
-                    results, pred_dict = evaluate(model, dev_loader, device,
+                    results, pred_dict = evaluate(args, model, dev_loader, device,
                                                   args.dev_eval_file,
                                                   args.max_ans_len,
                                                   args.use_squad_v2)
@@ -179,7 +179,7 @@ def main(args):
                                    num_visuals=args.num_visuals)
 
 
-def evaluate(model, data_loader, device, eval_file, max_len, use_squad_v2):
+def evaluate(args, model, data_loader, device, eval_file, max_len, use_squad_v2):
     nll_meter = util.AverageMeter()
 
     model.eval()
