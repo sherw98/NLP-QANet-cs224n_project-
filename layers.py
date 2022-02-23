@@ -64,7 +64,7 @@ class FullEmbedding(nn.Module):
                       out_channels= 128, 
                       kernel_size = 7),
             nn.ReLU(),
-            nn.MaxPool1d(hidden_size),
+            # nn.MaxPool1d(hidden_size),
             nn.Dropout(drop_prob)
         )
 
@@ -86,6 +86,8 @@ class FullEmbedding(nn.Module):
         print("")
         print("chars_emb shape before conv: {}".format(chars_emb.shape))
         chars_emb = self.conv1d(chars_emb)
+        print("")
+        print("chars_emb after conv: {}".format(chars_emb.shape))
         chars_emb = chars_emb.view(-1, chars.size(1), hidden_size) # issue here prob
 
         # concated
