@@ -64,7 +64,7 @@ class FullEmbedding(nn.Module):
                       out_channels= 128, 
                       kernel_size = 7),
             nn.ReLU(),
-            # nn.MaxPool1d(hidden_size),
+            nn.MaxPool1d(7),
             nn.Dropout(drop_prob)
         )
 
@@ -82,9 +82,14 @@ class FullEmbedding(nn.Module):
         # chars
         chars_emb = self.embed_char(chars) # (batch_size, seq_len, word_len, embed_size), [64, 375, 16, 64]
         # [64*375, 64, 16]
-        chars_emb = chars_emb.view(chars_emb.size(0) * chars_emb.size(1), chars_emb.size(3), chars_emb.size(2))
+        batch_size = chars_emb.size(0)
+        seqlen = chars_emb.size(1)
+        wordlen = chars_emb.size(2)
+        char_embsize = chars_emb.size(3)
+
+        chars_emb = chars_emb.view(batch_size*seqlen, char_embsize, wordlen)
         print("")
-        print("chars_emb shape before conv: {}".format(chars_emb.shape))
+        print("chars_emb shape before conv: {}".format(chars_emb.shape)) # [24000, 64, 16]
         chars_emb = self.conv1d(chars_emb)
         print("")
         print("chars_emb after conv: {}".format(chars_emb.shape))
