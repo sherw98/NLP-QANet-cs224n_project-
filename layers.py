@@ -72,7 +72,7 @@ class FullEmbedding(nn.Module):
         # words
         words_emb = self.embed_word(words)   # (batch_size, seq_len, embed_size)
         print("")
-        print("words_emb shape before proj: ".format(words_emb.shape))
+        print("words_emb shape before proj: {}".format(words_emb.shape))
         words_emb = F.dropout(words_emb, self.drop_prob, self.training)
         words_emb = self.proj_word(words_emb)  # (batch_size, seq_len, hidden_size)
         
@@ -80,7 +80,7 @@ class FullEmbedding(nn.Module):
         # chars
         chars_emb = self.embed_char(chars) # (batch_size, ?, embed_size)
         print("")
-        print("chars_emb shape before conv: ".format(chars_emb.shape))
+        print("chars_emb shape before conv: {}".format(chars_emb.shape))
         chars_emb = self.conv1d(chars_emb)
         chars_emb = chars_emb.view(-1, chars.size(1), hidden_size) # issue here prob
 
