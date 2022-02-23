@@ -120,13 +120,13 @@ def main(args):
                 optimizer.zero_grad()
 
                 # Forward
-                if(args.model_type == "baseline"){
+                if(args.model_type == "baseline"):
                     log_p1, log_p2 = model(cw_idxs, qw_idxs)
-                }elif(args.model_type == "bidaf_char"){
+                elif(args.model_type == "bidaf_char"):
                     log_p1, log_p2 = model(cw_idxs, qw_idxs, cc_idxs, qc_idxs)
-                }else{
+                else:
                     raise Exception("Model Type Invalid")
-                }
+                
         
                 y1, y2 = y1.to(device), y2.to(device)
                 loss = F.nll_loss(log_p1, y1) + F.nll_loss(log_p2, y2)
