@@ -61,14 +61,14 @@ class FullEmbedding(nn.Module):
         # convolution for chars
         self.conv1d = nn.Sequential(
             nn.Conv1d(in_channels = char_vectors.size(1),
-                      out_channels= 128, 
+                      out_channels= hidden_size, 
                       kernel_size = 7),
             nn.ReLU(),
             nn.MaxPool1d(7),
             nn.Dropout(drop_prob)
         )
 
-        self.hwy = HighwayEncoder(2, hidden_size)
+        self.hwy = HighwayEncoder(2, 2*hidden_size)
 
     def forward(self, words, chars):
         # words
