@@ -64,7 +64,7 @@ class FullEmbedding(nn.Module):
                       out_channels= hidden_size, 
                       kernel_size = 7),
             nn.ReLU(),
-            nn.MaxPool1d(7),
+            nn.MaxPool1d(1000, ceil_mode=True),
             nn.Dropout(drop_prob)
         )
 
@@ -93,12 +93,12 @@ class FullEmbedding(nn.Module):
         chars_emb = self.conv1d(chars_emb)
         # print("")
         # print("chars_emb after conv: {}".format(chars_emb.shape))
-        chars_emb = chars_emb.view(batch_size, seqlen, -1) # issue here prob
+        chars_emb = chars_emb.view(batch_size, seqlen, -1)  # (batch_size, seqlen , hidden_size)
 
         # print("")
         # print("chars emb after reshape: {}".format(chars_emb.shape))
         # concated
-        concat_emb = torch.cat((words_emb, chars_emb), dim = 2)
+        concat_emb = torch.cat((words_emb, chars_emb), dim = 2) # (batch_size, seq_len, 2*hidden_size)
         
 
         # highway
