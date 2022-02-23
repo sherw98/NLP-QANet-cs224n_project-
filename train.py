@@ -17,7 +17,7 @@ import util
 from args import get_train_args
 from collections import OrderedDict
 from json import dumps
-from models import BiDAF
+from models import BiDAF, BiDAF_character
 from tensorboardX import SummaryWriter
 from tqdm import tqdm
 from ujson import load as json_load
@@ -52,7 +52,7 @@ def main(args):
                     drop_prob=args.drop_prob)
     elif(args.model_type == "bidaf_char"):
         char_vectors = util.torch_from_json(args.char_emb_file)
-        model = BiDAF(word_vectors=word_vectors,
+        model = BiDAF_character(word_vectors=word_vectors,
                     char_vectors=char_vectors,
                     hidden_size=args.hidden_size,
                     drop_prob=args.drop_prob)
