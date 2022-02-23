@@ -95,8 +95,11 @@ class FullEmbedding(nn.Module):
         print("chars_emb after conv: {}".format(chars_emb.shape))
         chars_emb = chars_emb.view(batch_size, seqlen, -1) # issue here prob
 
+        print("")
+        print("chars emb after reshape: {}".format(chars_emb.shape))
         # concated
-        concat_emb = torch.concat((words_emb, chars_emb), dim = 2)
+        concat_emb = torch.cat((words_emb, chars_emb), dim = 2)
+        
 
         # highway
         concat_emb = self.hwy(concat_emb)   # (batch_size, seq_len, 2*hidden_size)
