@@ -38,6 +38,52 @@ class Embedding(nn.Module):
 
         return emb
 
+class FullEmbedding(nn.Module):
+    """Embedding layer used by BiDAF, without the character-level component.
+
+    Word-level embeddings are further refined using a 2-layer Highway Encoder
+    (see `HighwayEncoder` class for details).
+
+    Args:
+        word_vectors (torch.Tensor): Pre-trained word vectors.
+        hidden_size (int): Size of hidden activations.
+        drop_prob (float): Probability of zero-ing out activations
+    """
+    def __init__(self, word_vectors, char_vectors, hidden_size, drop_prob):
+        super(Embedding, self).__init__()
+        self.drop_prob = drop_prob
+
+        self.embed_word = nn.Embedding.from_pretrained(word_vectors)
+        self.embed_char = nn.Embedding.from_pretrained(char_vectors)
+
+        self.proj_word = nn.Linear(word_vectors.size(1), hidden_size, bias = False)
+        self.conv1d = nn.Sequential(
+            nn.Conv1d(char_vectors.size(1), 100, 5),
+            nn.ReLU(),
+            nn.MaxPool1d(hidden_size),
+            nn.Dropout(drop_prob)
+        )
+
+        self.hwy = HighwayEncoder(2, hidden_size)
+
+    def forward(self, words, chars):
+        # words
+        words_emb = self.embed_word(words)   # (batch_size, seq_len, embed_size)
+        words_emb = F.dropout(words_emb, self.drop_prob, self.training)
+        words_emb = self.proj(words_emb)  # (batch_size, seq_len, hidden_size)
+
+        # chars
+        chars_emb = self.embed_char(chars)
+        chars_emb = self.conv1d(chars_emb)
+        chars_emb = chars_emb.view(-1, chars.size(1), hidden_size)
+
+        # concated
+        concat_emb = torch.concat((words_emb, chars_emb), dim = 2)
+
+        # highway
+        concat_emb = self.hwy(concat_emb)   # (batch_size, seq_len, 2*hidden_size)
+
+        return concat_emb
 
 class HighwayEncoder(nn.Module):
     """Encode an input sequence using a highway network.

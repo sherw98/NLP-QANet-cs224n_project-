@@ -46,9 +46,20 @@ def main(args):
 
     # Get model
     log.info('Building model...')
-    model = BiDAF(word_vectors=word_vectors,
-                  hidden_size=args.hidden_size,
-                  drop_prob=args.drop_prob)
+    if(args.model_type == "baseline"){
+        model = BiDAF(word_vectors=word_vectors,
+                    hidden_size=args.hidden_size,
+                    drop_prob=args.drop_prob)
+    }elif(args.model_type == "bidaf_char"){
+        char_vectors = util.torch_from_json(args.char_emb_file)
+        model = BiDAF(word_vectors=word_vectors,
+                    char_vectors=char_vectors,
+                    hidden_size=args.hidden_size,
+                    drop_prob=args.drop_prob)
+    }else{
+        raise Exception("Model provided not valid")
+    }
+
     model = nn.DataParallel(model, args.gpu_ids)
     if args.load_path:
         log.info(f'Loading checkpoint from {args.load_path}...')
@@ -97,13 +108,26 @@ def main(args):
                 tqdm(total=len(train_loader.dataset)) as progress_bar:
             for cw_idxs, cc_idxs, qw_idxs, qc_idxs, y1, y2, ids in train_loader:
                 # Setup for forward
+                # words
                 cw_idxs = cw_idxs.to(device)
                 qw_idxs = qw_idxs.to(device)
-                batch_size = cw_idxs.size(0)
+
+                # chars
+                cc_idxs = cc_idxs.to(device)
+                qc_idxs = qc_idxs.to(device)
+
+                batch_size = cw_idxs.size(0) + cc_idxs.size(0)
                 optimizer.zero_grad()
 
                 # Forward
-                log_p1, log_p2 = model(cw_idxs, qw_idxs)
+                if(args.model_type == "baseline"){
+                    log_p1, log_p2 = model(cw_idxs, qw_idxs)
+                }elif(args.model_type == "bidaf_char"){
+                    log_p1, log_p2 = model(cw_idxs, qw_idxs, cc_idxs, qc_idxs)
+                }else{
+                    raise Exception("Model Type Invalid")
+                }
+        
                 y1, y2 = y1.to(device), y2.to(device)
                 loss = F.nll_loss(log_p1, y1) + F.nll_loss(log_p2, y2)
                 loss_val = loss.item()
