@@ -81,6 +81,8 @@ class FullEmbedding(nn.Module):
 
         # chars
         chars_emb = self.embed_char(chars) # (batch_size, seq_len, word_len, embed_size), [64, 375, 16, 64]
+        # [64*375, 64, 16]
+        chars_emb = chars_emb.view(chars_emb.size(0) * chars_emb.size(1), chars_emb.size(3), chars_emb.size(2))
         print("")
         print("chars_emb shape before conv: {}".format(chars_emb.shape))
         chars_emb = self.conv1d(chars_emb)
