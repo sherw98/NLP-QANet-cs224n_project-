@@ -73,8 +73,8 @@ class FullEmbedding(nn.Module):
     def forward(self, words, chars):
         # words
         words_emb = self.embed_word(words)   # (batch_size, seq_len, embed_size), [64, 375, 300]
-        print("")
-        print("words_emb shape before proj: {}".format(words_emb.shape))
+        # print("")
+        # print("words_emb shape before proj: {}".format(words_emb.shape))
         words_emb = F.dropout(words_emb, self.drop_prob, self.training)
         words_emb = self.proj_word(words_emb)  # (batch_size, seq_len, hidden_size)
         
@@ -88,15 +88,15 @@ class FullEmbedding(nn.Module):
         char_embsize = chars_emb.size(3)
 
         chars_emb = chars_emb.view(batch_size*seqlen, char_embsize, wordlen)
-        print("")
-        print("chars_emb shape before conv: {}".format(chars_emb.shape)) # [24000, 64, 16]
+        # print("")
+        # print("chars_emb shape before conv: {}".format(chars_emb.shape)) # [24000, 64, 16]
         chars_emb = self.conv1d(chars_emb)
-        print("")
-        print("chars_emb after conv: {}".format(chars_emb.shape))
+        # print("")
+        # print("chars_emb after conv: {}".format(chars_emb.shape))
         chars_emb = chars_emb.view(batch_size, seqlen, -1) # issue here prob
 
-        print("")
-        print("chars emb after reshape: {}".format(chars_emb.shape))
+        # print("")
+        # print("chars emb after reshape: {}".format(chars_emb.shape))
         # concated
         concat_emb = torch.cat((words_emb, chars_emb), dim = 2)
         
