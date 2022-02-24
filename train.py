@@ -60,7 +60,7 @@ def main(args):
         char_vectors = util.torch_from_json(args.char_emb_file)
         model = QANet(word_vectors=word_vectors,
                     char_vectors=char_vectors,
-                    hidden_size=args.hidden_size,
+                    hidden_size=50,
                     drop_prob=args.drop_prob)
     else:
         raise Exception("Model provided not valid")
