@@ -195,7 +195,7 @@ class QANet(nn.Module):
 
 
         # model encoder blocks
-        att = self.attn_resizer(att)
+        att = self.attn_resizer(att.transpose(1,2)).transpose(1,2)
         att = F.dropout(att, 0.2, self.training)
         for block in self.mod_enc_blocks:
             att = block(att, c_mask)        # (batch_size, c_len, 2 * hidden_size)
