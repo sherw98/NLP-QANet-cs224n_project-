@@ -17,8 +17,8 @@ def position_encoding(x):
     pos = torch.arange(seq_len).unsqueeze(1)
     val = torch.exp(torch.arange(0, n_embd, 2) * -(math.log(10000.0) / n_embd))
 
-    pos_encodings[:, 0::2] = torch.sin(pos * value)
-    pos_encodings[:, 1::2] = torch.cos(pos*value)
+    pos_encodings[:, 0::2] = torch.sin(pos * val)
+    pos_encodings[:, 1::2] = torch.cos(pos*val)
     pos_encodings = pos_encodings.unsqueeze(0) # [1, seq_len, n_embd]
 
     return x + pos_encodings.to(x.get_device())
