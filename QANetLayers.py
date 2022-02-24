@@ -136,7 +136,7 @@ class Block(nn.Module):
 
         # convolution layers 
         for i in range(self.num_convs):
-            x = convolution(x)
+            x = self.convolution(x)
             x += residual
             residual = x
 
