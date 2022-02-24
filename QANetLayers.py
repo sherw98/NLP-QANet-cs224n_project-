@@ -47,12 +47,9 @@ class CausalSelfAttention(nn.Module):
         self.resid_drop = nn.Dropout(resid_pdrop)
         # output projection
         self.proj = nn.Linear(n_embd, n_embd)
-        # causal mask to ensure that attention is only applied to the left in the input sequence
-        self.register_buffer("mask", torch.tril(torch.ones(block_size, block_size))
-                                     .view(1, 1, block_size, block_size))
         self.n_head = n_head
 
-    def forward(self, x, layer_past=None):
+    def forward(self, x, mask, layer_past=None):
         B, T, C = x.size()
 
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
@@ -60,11 +57,12 @@ class CausalSelfAttention(nn.Module):
         q = self.query(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
         v = self.value(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
 
+        mask=mask.view(B, 1, 1, -1)
         # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
         print("Shape of att: {}".format(att.shape))
         print("Shape of mask: {}".format(self.mask.shape))
-        att = att.masked_fill(self.mask[:,:,:T,:T] == 0, -1e10) # todo: just use float('-inf') instead?
+        att = att.masked_fill(mask == 0, -1e10) # todo: just use float('-inf') instead?
         att = F.softmax(att, dim=-1)
         att = self.attn_drop(att)
         y = att @ v # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
@@ -132,7 +130,7 @@ class Block(nn.Module):
         self.ff_2 = QA_Conv1d(hidden_size, hidden_size, bias = True)
 
 
-    def forward(self, x):
+    def forward(self, x, mask):
         x = position_encoding(x)
         residual = x
 
@@ -145,7 +143,7 @@ class Block(nn.Module):
 
         # multihead attn
         x = self.attn_ln(x)
-        x = x + self.attn(x) + residual
+        x = x + self.attn(x, mask) + residual
         residual = x
 
         # feedforwards
