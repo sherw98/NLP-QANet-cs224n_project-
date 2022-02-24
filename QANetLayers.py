@@ -141,7 +141,6 @@ class Block(nn.Module):
             x += residual
             residual = x
 
-        x = x.transpose(1,2)
         # multihead attn
         x = self.attn_ln(x)
         x = x + self.attn(x) + residual
