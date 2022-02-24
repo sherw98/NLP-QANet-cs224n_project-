@@ -196,17 +196,17 @@ class QANet(nn.Module):
         # model encoder blocks
         att = F.dropout(att, 0.2, self.training)
         for block in self.mod_enc_blocks:
-            att = self.mod_enc_blocks(att, c_mask)        # (batch_size, c_len, 2 * hidden_size)
+            att = block(att, c_mask)        # (batch_size, c_len, 2 * hidden_size)
         mod1 = att
 
         att = F.dropout(att, 0.2, self.training)
         for block in self.mod_enc_blocks:
-            att = self.mod_enc_blocks(att, c_mask)
+            att = block(att, c_mask)
         mod2 = att
 
         att = F.dropout(att, 0.2, self.training)
         for block in self.mod_enc_blocks:
-            att = self.mod_enc_blocks(att, c_mask)
+            att = block(att, c_mask)
 
         mod3 = att
         # output the probabilities
