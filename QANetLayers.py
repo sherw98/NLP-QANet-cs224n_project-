@@ -131,7 +131,7 @@ class Block(nn.Module):
 
 
     def forward(self, x):
-        x = position_encoding(x)
+        x = position_encoding(x).transpose(1,2)
         residual = x
 
         # convolution layers 
@@ -140,6 +140,7 @@ class Block(nn.Module):
             x += residual
             residual = x
 
+        x = x.transpose(1,2)
         # multihead attn
         x = self.attn_ln(x)
         x = x + self.attn(x) + residual
