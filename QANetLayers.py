@@ -100,8 +100,8 @@ class Block(nn.Module):
         super(Block, self).__init__()
 
         self.num_convs = num_convs
+        self.conv_ln = nn.LayerNorm(hidden_size)
         self.convolution = nn.Sequential(
-            nn.LayerNorm(hidden_size),
             nn.Conv1d(in_channels = hidden_size, 
                       out_channels = hidden_size,
                       kernel_size = 7, 
@@ -110,7 +110,7 @@ class Block(nn.Module):
                       bias = False),
 
             nn.Conv1d(in_channels = hidden_size,
-                      out_channels = 128,
+                      out_channels = hidden_size,
                       kernel_size = 1,
                       padding = 0,
                       bias = True),
@@ -118,25 +118,26 @@ class Block(nn.Module):
             nn.Dropout(resid_pdrop)
         )
 
-        self.attn_ln = nn.LayerNorm(128)        
-        self.attn = CausalSelfAttention(n_embd = 128, 
+        self.attn_ln = nn.LayerNorm(hidden_size)        
+        self.attn = CausalSelfAttention(n_embd = hidden_size, 
                                         n_head = 8, 
                                         attn_pdrop = 0.2,
                                         resid_pdrop = resid_pdrop,
                                         block_size =  128)
         
-        self.ff_ln = nn.LayerNorm(128)
-        self.ff_1 = QA_Conv1d(128, 128, relu= True, bias = True)
-        self.ff_2 = QA_Conv1d(128, 128, bias = True)
+        self.ff_ln = nn.LayerNorm(hidden_size)
+        self.ff_1 = QA_Conv1d(hidden_size, hidden_size, relu= True, bias = True)
+        self.ff_2 = QA_Conv1d(hidden_size, hidden_size, bias = True)
 
 
     def forward(self, x):
-        x = position_encoding(x).transpose(1,2)
+        x = position_encoding(x)
         residual = x
 
         # convolution layers 
         for i in range(self.num_convs):
-            x = self.convolution(x)
+            x = self.conv_ln(x)
+            x = self.convolution(x.transpose(1,2)).transpose(1,2)
             x += residual
             residual = x
 
