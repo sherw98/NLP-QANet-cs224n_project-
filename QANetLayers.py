@@ -49,7 +49,7 @@ class CausalSelfAttention(nn.Module):
         self.proj = nn.Linear(n_embd, n_embd)
         self.n_head = n_head
 
-    def forward(self, x, mask, layer_past=None):
+    def forward(self, x, mask):
         B, T, C = x.size()
 
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
@@ -131,6 +131,7 @@ class Block(nn.Module):
 
 
     def forward(self, x, mask):
+        print("in the enc block")
         x = position_encoding(x)
         residual = x
 
