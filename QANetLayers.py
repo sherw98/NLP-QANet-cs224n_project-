@@ -149,8 +149,8 @@ class Block(nn.Module):
 
         # feedforwards
         x = self.ff_ln(x)
-        x = self.ff_1(x)
-        x = self.ff_2(x)
+        x = self.ff_1(x.transpose(1,2)).transpose(1,2)
+        x = self.ff_2(x.transpose(1,2)).transpose(1,2)
         x += residual
         
         return x
@@ -164,6 +164,7 @@ class QANetOutput(nn.Module):
         x1 = torch.cat((M1, M2), dim = 1)
         x2 = torch.cat((M2, M3), dim = 1)
 
+        print("x1 shape in output layer: {}".format(x1.shape))
         p1 = masked_softmax(self.w1(x1).squeeze(), mask, log_softmax = True)
         p2 = masked_softmax(self.w2(x2).squeeze(), mask, log_softmax = True)
 
