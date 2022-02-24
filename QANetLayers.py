@@ -61,7 +61,7 @@ class CausalSelfAttention(nn.Module):
         # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
         print("Shape of att: {}".format(att.shape))
-        print("Shape of mask: {}".format(self.mask.shape))
+        print("Shape of mask: {}".format(mask.shape))
         att = att.masked_fill(mask == 0, -1e10) # todo: just use float('-inf') instead?
         att = F.softmax(att, dim=-1)
         att = self.attn_drop(att)
