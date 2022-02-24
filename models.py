@@ -171,11 +171,12 @@ class QANet(nn.Module):
         self.att = layers.BiDAFAttention(hidden_size=2 * hidden_size,
                                          drop_prob=drop_prob)
 
-        self.mod_enc_blocks = nn.ModuleList([QANetLayers.Block(hidden_size = 8*hidden_size,
+        self.attn_resizer = QANetLayers.QA_Conv1d(8*hidden_size, hidden_size)
+        self.mod_enc_blocks = nn.ModuleList([QANetLayers.Block(hidden_size = hidden_size,
                                                                 resid_pdrop = drop_prob,
                                                                 num_convs = 2) for _  in range(7)])
 
-        self.out = QANetLayers.QANetOutput(2*hidden_size)
+        self.out = QANetLayers.QANetOutput(hidden_size)
 
     def forward(self, cw_idxs, qw_idxs, cc_idxs, qc_idxs):
         c_mask = torch.zeros_like(cw_idxs) != cw_idxs
@@ -194,6 +195,7 @@ class QANet(nn.Module):
 
 
         # model encoder blocks
+        att = self.attn_resizer(att)
         att = F.dropout(att, 0.2, self.training)
         for block in self.mod_enc_blocks:
             att = block(att, c_mask)        # (batch_size, c_len, 2 * hidden_size)
