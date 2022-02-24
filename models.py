@@ -8,7 +8,7 @@ import layers
 import QANetLayers
 import torch
 import torch.nn as nn
-
+import torch.nn.functional as F
 
 class BiDAF(nn.Module):
     """Baseline BiDAF model for SQuAD.
