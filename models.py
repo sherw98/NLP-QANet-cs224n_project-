@@ -171,7 +171,7 @@ class QANet(nn.Module):
         self.att = layers.BiDAFAttention(hidden_size=2 * hidden_size,
                                          drop_prob=drop_prob)
 
-        self.mod_enc_blocks = nn.Sequential(*[QANetLayers.Block(hidden_size = 8* hidden_size,
+        self.mod_enc_blocks = nn.ModuleList([QANetLayers.Block(hidden_size = 8* hidden_size,
                                                                 resid_pdrop = drop_prob,
                                                                 num_convs = 2) for _  in range(7)])
 
@@ -194,10 +194,21 @@ class QANet(nn.Module):
 
 
         # model encoder blocks
-        mod1 = self.mod_enc_blocks(F.dropout(att, 0.2, self.training), c_mask)        # (batch_size, c_len, 2 * hidden_size)
-        mod2 = self.mod_enc_blocks(F.dropout(mod1, 0.2, self.training), c_mask)
-        mod3 = self.mod_enc_blocks(F.dropout(mod2, 0.2, self.training), c_mask)
-        
+        att = F.dropout(att, 0.2, self.training)
+        for block in self.mod_enc_blocks:
+            att = self.mod_enc_blocks(att, c_mask)        # (batch_size, c_len, 2 * hidden_size)
+        mod1 = att
+
+        att = F.dropout(att, 0.2, self.training)
+        for block in self.mod_enc_blocks:
+            att = self.mod_enc_blocks(att, c_mask)
+        mod2 = att
+
+        att = F.dropout(att, 0.2, self.training)
+        for block in self.mod_enc_blocks:
+            att = self.mod_enc_blocks(att, c_mask)
+
+        mod3 = att
         # output the probabilities
         out = self.out(mod1, mod2, mod3, c_mask)  # 2 tensors, each (batch_size, c_len)
 
