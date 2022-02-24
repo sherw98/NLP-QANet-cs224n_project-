@@ -137,7 +137,7 @@ def get_train_args():
     parser.add_argument('--model_type',
                         type=str,
                         default = "baseline",
-                        choices=('baseline', 'bidaf_char'),
+                        choices=('baseline', 'bidaf_char', 'QANet'),
                         help='Model choice for training')
 
     args = parser.parse_args()

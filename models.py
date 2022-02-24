@@ -136,3 +136,70 @@ class BiDAF_character(nn.Module):
 
         return out
 
+class QANet(nn.Module):
+    """QAnet model with character-level embeddings for SQuAD.
+
+    Based on the paper:
+    "QANET: COMBINING LOCAL CONVOLUTION WITH 
+    GLOBAL SELF-ATTENTION FOR READING COMPREHENSION"
+    by Adams Wei Yu , David Dohan , Minh-Thang Luong
+    (https://arxiv.org/pdf/1804.09541.pdf).
+
+    Follows a high-level structure commonly found in SQuAD models:
+        - Embedding layer: Embed word indices to get word vectors.
+        - Encoder layer: Encode the embedded sequence.
+        - Attention layer: Apply an attention mechanism to the encoded sequence.
+        - Model encoder layer: Encode the sequence again.
+        - Output layer: Simple layer (e.g., fc + softmax) to get final outputs.
+
+    Args:
+        word_vectors (torch.Tensor): Pre-trained word vectors.
+        hidden_size (int): Number of features in the hidden state at each layer.
+        drop_prob (float): Dropout probability.
+    """
+    def __init__(self, word_vectors, char_vectors, hidden_size, drop_prob=0.):
+        super(QANet, self).__init__()
+        self.emb = layers.FullEmbedding(word_vectors=word_vectors,
+                                        char_vectors=char_vectors,
+                                    hidden_size=hidden_size,
+                                    drop_prob=drop_prob)
+
+        self.enc_blocks = nn.Sequential(*[QANetLayers.Block(hidden_size = 2*hidden_size, 
+                                                            resid_pdrop = drop_prob, 
+                                                            num_convs= 4) for _ in range(1)])
+        
+        self.att = layers.BiDAFAttention(hidden_size=2 * hidden_size,
+                                         drop_prob=drop_prob)
+
+        self.mod_enc_blocks = nn.Sequential(*[QANetLayers.Block(hidden_size = 8* hidden_size,
+                                                                resid_pdrop = drop_prob,
+                                                                num_convs = 2) for _  in range(7)])
+
+        self.out = QANetLayers.QANetOutput(2*hidden_size)
+
+    def forward(self, cw_idxs, qw_idxs, cc_idxs, qc_idxs):
+        c_mask = torch.zeros_like(cw_idxs) != cw_idxs
+        q_mask = torch.zeros_like(qw_idxs) != qw_idxs
+        c_len, q_len = c_mask.sum(-1), q_mask.sum(-1)
+ 
+        # embeddings
+        c_emb = self.emb(cw_idxs, cc_idxs)         # (batch_size, c_len, 2*hidden_size)
+        q_emb = self.emb(qw_idxs, qc_idxs)         # (batch_size, q_len, 2*hidden_size)
+
+        c_enc = self.enc_blocks(c_emb)    # (batch_size, c_len, 4 * hidden_size)
+        q_enc = self.enc_blocks(q_emb)    # (batch_size, q_len, 4 * hidden_size)
+
+        att = self.att(c_enc, q_enc,
+                       c_mask, q_mask)    # (batch_size, c_len, 8 * hidden_size)
+
+
+        # model encoder blocks
+        mod1 = self.mod_enc_blocks(F.dropout(att, 0.2, self.training))        # (batch_size, c_len, 2 * hidden_size)
+        mod2 = self.mod_enc_blocks(F.dropout(mod1, 0.2, self.training))
+        mod3 = self.mod_enc_blocks(F.dropout(mod2, 0.2, self.training))
+        
+        # output the probabilities
+        out = self.out(mod1, mod2, mod3, c_mask)  # 2 tensors, each (batch_size, c_len)
+
+        return out
+

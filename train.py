@@ -56,6 +56,12 @@ def main(args):
                     char_vectors=char_vectors,
                     hidden_size=args.hidden_size,
                     drop_prob=args.drop_prob)
+    elif(args.model_type == "QANet"):
+        char_vectors = util.torch_from_json(args.char_emb_file)
+        model = QANet(word_vectors=word_vectors,
+                    char_vectors=char_vectors,
+                    hidden_size=args.hidden_size,
+                    drop_prob=args.drop_prob)
     else:
         raise Exception("Model provided not valid")
     
@@ -123,6 +129,8 @@ def main(args):
                 if(args.model_type == "baseline"):
                     log_p1, log_p2 = model(cw_idxs, qw_idxs)
                 elif(args.model_type == "bidaf_char"):
+                    log_p1, log_p2 = model(cw_idxs, qw_idxs, cc_idxs, qc_idxs)
+                elif(args.model_type == "QANet"):
                     log_p1, log_p2 = model(cw_idxs, qw_idxs, cc_idxs, qc_idxs)
                 else:
                     raise Exception("Model Type Invalid")
@@ -203,6 +211,8 @@ def evaluate(args, model, data_loader, device, eval_file, max_len, use_squad_v2)
             if(args.model_type == "baseline"):
                 log_p1, log_p2 = model(cw_idxs, qw_idxs)
             elif(args.model_type == "bidaf_char"):
+                log_p1, log_p2 = model(cw_idxs, qw_idxs, cc_idxs, qc_idxs)
+            elif(args.model_type == "QANet"):
                 log_p1, log_p2 = model(cw_idxs, qw_idxs, cc_idxs, qc_idxs)
             else:
                 raise Exception("Model Type Invalid")

@@ -1,6 +1,6 @@
 """Assortment of QA layers for use in models.py.
 """
-
+import math 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -9,11 +9,19 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from util import masked_softmax
 
 def position_encoding(x):
-    seq_len = x.size()[2]
-    n_embd = x.size()[1]
+    # x shape is [batch size, seq_len, n_embd]
+    seq_len = x.size(1)
+    n_embd = x.size(2)
 
-    pos = nn.Parameter()
-    return x+ pos.to(x.get_device())
+    pos_encodings = torch.zeros(seq_len, n_embd)
+    pos = torch.arange(seq_len).unsqueeze(1)
+    val = torch.exp(torch.arange(0, n_embd, 2) * -(math.log(10000.0) / n_embd))
+
+    pos_encodings[:, 0::2] = torch.sin(pos * value)
+    pos_encodings[:, 1::2] = torch.cos(pos*value)
+    pos_encodings = pos_encodings.unsqueeze(0) # [1, seq_len, n_embd]
+
+    return x + pos_encodings.to(x.get_device())
 
 def get_sin_cos(seq_len, n_embd):
     position = torch.arange(seq_len)
@@ -88,9 +96,10 @@ class QA_Conv1d(nn.Module):
 class Block(nn.Module):
     """ an QANet Transformer block with Conv nets"""
 
-    def __init__(self, hidden_size, num_conv, resid_pdrop):
-        super().__init__()
+    def __init__(self, hidden_size, resid_pdrop, num_convs):
+        super(Block, self).__init__()
 
+        self.num_convs = num_convs
         self.convolution = nn.Sequential(
             nn.LayerNorm(hidden_size),
             nn.Conv1d(in_channels = hidden_size, 
@@ -122,48 +131,83 @@ class Block(nn.Module):
 
 
     def forward(self, x):
-        x = x + self.attn(self.ln1(x))
-        x = x + self.mlp(self.ln2(x))
+        x = position_encoding(x)
+        residual = x
+
+        # convolution layers 
+        for i in range(self.num_convs):
+            x = convolution(x)
+            x += residual
+            residual = x
+
+        # multihead attn
+        x = self.attn_ln(x)
+        x = x + self.attn(x) + residual
+        residual = x
+
+        # feedforwards
+        x = self.ff_ln(x)
+        x = self.ff_1(x)
+        x = self.ff_2(x)
+        x += residual
+        
         return x
 
-class QANetEncoder(nn.Module):
-    """Transformer-based encoding layer specific to QANet.
+class QANetOutput(nn.Module):
+    def __init__(self, n_embd):
+        super(QANetOutput, self).__init__()
+        self.w1 = QA_Conv1d(n_embd*2, 1)
+        self.w2 = QA_Conv1d(n_embd*2, 1)
+    def forward(self, M1, M2, M3, mask):
+        x1 = torch.cat((M1, M2), dim = 1)
+        x2 = torch.cat((M2, M3), dim = 1)
 
-    Args:
-        input_size (int): Size of a single timestep in the input.
-        hidden_size (int): Size of the RNN hidden state.
-        num_conv_layers (int): Number of convolution layers for transformer blocks to use
-        num_transformer_blocks (int): Number of transformer blocks to use
-        drop_prob (float): Probability of zero-ing out activations.
-    """
-    def __init__(self,
-                 input_size,
-                 hidden_size,
-                 num_conv_layers,
-                 num_transformer_blocks,
-                 drop_prob=0.):
-        super(QANetEncoder, self).__init__()
-        self.drop_prob = drop_prob
+        p1 = masked_softmax(self.w1(x1).squeeze(), mask, log_softmax = True)
+        p2 = masked_softmax(self.w2(x2).squeeze(), mask, log_softmax = True)
+
+        return p1, p2
+
+
+# class QANetEncoder(nn.Module):
+#     """Transformer-based encoding layer specific to QANet.
+
+#     Args:
+#         input_size (int): Size of a single timestep in the input.
+#         hidden_size (int): Size of the RNN hidden state.
+#         num_conv_layers (int): Number of convolution layers for transformer blocks to use
+#         num_transformer_blocks (int): Number of transformer blocks to use
+#         drop_prob (float): Probability of zero-ing out activations.
+#     """
+#     def __init__(self,
+#                  input_size,
+#                  hidden_size,
+#                  num_conv_layers=4,
+#                  num_transformer_blocks,
+#                  drop_prob=0.):
+#         super(QANetEncoder, self).__init__()
+
+#         self.drop_prob = drop_prob
+#         self.num_conv_layers = num_conv_layers
         
 
-    def forward(self, x, lengths):
-        # Save original padded length for use by pad_packed_sequence
-        orig_len = x.size(1)
+#     def forward(self, x, lengths):
+#         # Save original padded length for use by pad_packed_sequence
+#         orig_len = x.size(1)
 
-        # Sort by length and pack sequence for RNN
-        lengths, sort_idx = lengths.sort(0, descending=True)
-        x = x[sort_idx]     # (batch_size, seq_len, input_size)
-        x = pack_padded_sequence(x, lengths.cpu(), batch_first=True)
+#         # Sort by length and pack sequence for RNN
+#         lengths, sort_idx = lengths.sort(0, descending=True)
+#         x = x[sort_idx]     # (batch_size, seq_len, input_size)
+#         x = pack_padded_sequence(x, lengths.cpu(), batch_first=True)
 
-        # Apply RNN
-        x, _ = self.rnn(x)  # (batch_size, seq_len, 2 * hidden_size)
+#         # Apply RNN
+#         x, _ = self.rnn(x)  # (batch_size, seq_len, 2 * hidden_size)
 
-        # Unpack and reverse sort
-        x, _ = pad_packed_sequence(x, batch_first=True, total_length=orig_len)
-        _, unsort_idx = sort_idx.sort(0)
-        x = x[unsort_idx]   # (batch_size, seq_len, 2 * hidden_size)
+#         # Unpack and reverse sort
+#         x, _ = pad_packed_sequence(x, batch_first=True, total_length=orig_len)
+#         _, unsort_idx = sort_idx.sort(0)
+#         x = x[unsort_idx]   # (batch_size, seq_len, 2 * hidden_size)
 
-        # Apply dropout (RNN applies dropout after all but the last layer)
-        x = F.dropout(x, self.drop_prob, self.training)
+#         # Apply dropout (RNN applies dropout after all but the last layer)
+#         x = F.dropout(x, self.drop_prob, self.training)
 
-        return x
+#         return x
