@@ -171,7 +171,7 @@ class QANet(nn.Module):
         self.att = layers.BiDAFAttention(hidden_size=2 * hidden_size,
                                          drop_prob=drop_prob)
 
-        self.mod_enc_blocks = nn.ModuleList([QANetLayers.Block(hidden_size = 8* hidden_size,
+        self.mod_enc_blocks = nn.ModuleList([QANetLayers.Block(hidden_size = 2*hidden_size,
                                                                 resid_pdrop = drop_prob,
                                                                 num_convs = 2) for _  in range(7)])
 
