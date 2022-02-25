@@ -59,16 +59,17 @@ class FullEmbedding(nn.Module):
         self.proj_word = nn.Linear(word_vectors.size(1), hidden_size, bias = False)
 
         # convolution for chars
-        self.conv1d = nn.Sequential(
-            nn.Conv1d(in_channels = char_vectors.size(1),
+        self.conv2d = nn.Sequential(
+            nn.Conv2d(in_channels = char_vectors.size(1),
                       out_channels= hidden_size, 
-                      kernel_size = 7),
+                      kernel_size = (1,7)),
             nn.ReLU(),
-            nn.MaxPool1d(1000, ceil_mode=True),
             nn.Dropout(drop_prob)
         )
 
-        self.hwy = HighwayEncoder(2, 2*hidden_size)
+        self.proj_concat = nn.Linear(2*hidden_size, hidden_size, bias = False)
+
+        self.hwy = HighwayEncoder(2, hidden_size)
 
     def forward(self, words, chars):
         # words
@@ -76,7 +77,7 @@ class FullEmbedding(nn.Module):
         # print("")
         # print("words_emb shape before proj: {}".format(words_emb.shape))
         words_emb = F.dropout(words_emb, self.drop_prob, self.training)
-        words_emb = self.proj_word(words_emb)  # (batch_size, seq_len, hidden_size)
+        words_emb = self.proj_word(words_emb)  # (batch_size, seq_len, hidden_size) [64, 375, 100]
         
 
         # chars
@@ -87,22 +88,24 @@ class FullEmbedding(nn.Module):
         wordlen = chars_emb.size(2)
         char_embsize = chars_emb.size(3)
 
-        chars_emb = chars_emb.view(batch_size*seqlen, char_embsize, wordlen)
-        # print("")
-        # print("chars_emb shape before conv: {}".format(chars_emb.shape)) # [24000, 64, 16]
-        chars_emb = self.conv1d(chars_emb)
-        # print("")
-        # print("chars_emb after conv: {}".format(chars_emb.shape))
-        chars_emb = chars_emb.view(batch_size, seqlen, -1)  # (batch_size, seqlen , hidden_size)
+        chars_emb = chars_emb.permute(0, 3, 1, 2) # (batch_size, embed_size, seq_len, word_len) [64, 64, 375, 16]
+        # chars_emb = chars_emb.view(batch_size*seqlen, char_embsize, wordlen)
+        print("")
+        print("chars_emb shape before conv: {}".format(chars_emb.shape)) # [64, 64, 375, 16]
+        chars_emb = self.conv2d(chars_emb)
+        chars_emb, idx = torch.max(chars_emb, dim = 3) 
+        print("")
+        print("chars_emb after conv: {}".format(chars_emb.shape)) # [64,100,375]
+        # chars_emb = chars_emb.view(batch_size, seqlen, -1)  # (batch_size, seqlen , hidden_size)
 
         # print("")
         # print("chars emb after reshape: {}".format(chars_emb.shape))
         # concated
-        concat_emb = torch.cat((words_emb, chars_emb), dim = 2) # (batch_size, seq_len, 2*hidden_size)
+        concat_emb = torch.cat((words_emb, chars_emb.transpose(1,2)), dim = 2) # (batch_size, seq_len, 2*hidden_size)
         
-
+        concat_emb = self.proj_concat(concat_emb) # (batch_size, seq_len, hidden_size)
         # highway
-        concat_emb = self.hwy(concat_emb)   # (batch_size, seq_len, 2*hidden_size)
+        concat_emb = self.hwy(concat_emb)   # (batch_size, seq_len, hidden_size)
 
         return concat_emb
 
