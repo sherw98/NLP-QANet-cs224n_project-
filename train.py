@@ -122,7 +122,7 @@ def main(args):
                 cc_idxs = cc_idxs.to(device)
                 qc_idxs = qc_idxs.to(device)
 
-                batch_size = 32
+                batch_size = args.batch_size
                 optimizer.zero_grad()
 
                 # Forward
@@ -205,7 +205,7 @@ def evaluate(args, model, data_loader, device, eval_file, max_len, use_squad_v2)
             cc_idxs = cc_idxs.to(device)
             qc_idxs = qc_idxs.to(device)
 
-            batch_size = 32
+            batch_size = args.batch_size
 
             # Forward
             if(args.model_type == "baseline"):
