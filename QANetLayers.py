@@ -129,7 +129,6 @@ class Block(nn.Module):
 
 
     def forward(self, x, mask):
-        print("in the enc block")
         x = position_encoding(x)
         residual = x
 
