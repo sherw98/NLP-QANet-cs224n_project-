@@ -89,13 +89,13 @@ class FullEmbedding(nn.Module):
         char_embsize = chars_emb.size(3)
 
         chars_emb = chars_emb.permute(0, 3, 1, 2) # (batch_size, embed_size, seq_len, word_len) [64, 64, 375, 16]
-        # chars_emb = chars_emb.view(batch_size*seqlen, char_embsize, wordlen)
-        print("")
-        print("chars_emb shape before conv: {}".format(chars_emb.shape)) # [64, 64, 375, 16]
+        # # chars_emb = chars_emb.view(batch_size*seqlen, char_embsize, wordlen)
+        # print("")
+        # print("chars_emb shape before conv: {}".format(chars_emb.shape)) # [64, 64, 375, 16]
         chars_emb = self.conv2d(chars_emb)
         chars_emb, idx = torch.max(chars_emb, dim = 3) 
-        print("")
-        print("chars_emb after conv: {}".format(chars_emb.shape)) # [64,100,375]
+        # print("")
+        # print("chars_emb after conv: {}".format(chars_emb.shape)) # [64,100,375]
         # chars_emb = chars_emb.view(batch_size, seqlen, -1)  # (batch_size, seqlen , hidden_size)
 
         # print("")
