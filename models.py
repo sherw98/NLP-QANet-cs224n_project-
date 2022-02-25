@@ -168,7 +168,7 @@ class QANet(nn.Module):
                                             resid_pdrop = drop_prob, 
                                             num_convs= 4) 
         
-        self.att = layers.BiDAFAttention(hidden_size=2 * hidden_size,
+        self.att = layers.BiDAFAttention(hidden_size=hidden_size,
                                          drop_prob=drop_prob)
 
         self.attn_resizer = QANetLayers.QA_Conv1d(8*hidden_size, hidden_size)
