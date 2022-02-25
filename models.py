@@ -164,7 +164,7 @@ class QANet(nn.Module):
                                     hidden_size=hidden_size,
                                     drop_prob=drop_prob)
 
-        self.enc_blocks = QANetLayers.Block(hidden_size = 2*hidden_size, 
+        self.enc_blocks = QANetLayers.Block(hidden_size = hidden_size, 
                                             resid_pdrop = drop_prob, 
                                             num_convs= 4) 
         
