@@ -99,7 +99,7 @@ class BiDAF_character(nn.Module):
                                     hidden_size=hidden_size,
                                     drop_prob=drop_prob)
 
-        self.enc = layers.RNNEncoder(input_size=2*hidden_size,
+        self.enc = layers.RNNEncoder(input_size=hidden_size,
                                      hidden_size=hidden_size,
                                      num_layers=1,
                                      drop_prob=drop_prob)
@@ -164,14 +164,14 @@ class QANet(nn.Module):
                                     hidden_size=hidden_size,
                                     drop_prob=drop_prob)
 
-        self.enc_blocks = QANetLayers.Block(hidden_size = 2*hidden_size, 
+        self.enc_blocks = QANetLayers.Block(hidden_size = hidden_size, 
                                             resid_pdrop = drop_prob, 
                                             num_convs= 4) 
         
-        self.att = layers.BiDAFAttention(hidden_size=2 * hidden_size,
+        self.att = layers.BiDAFAttention(hidden_size=hidden_size,
                                          drop_prob=drop_prob)
 
-        self.attn_resizer = QANetLayers.QA_Conv1d(8*hidden_size, hidden_size)
+        self.attn_resizer = QANetLayers.QA_Conv1d(4*hidden_size, hidden_size)
         self.mod_enc_blocks = nn.ModuleList([QANetLayers.Block(hidden_size = hidden_size,
                                                                 resid_pdrop = drop_prob,
                                                                 num_convs = 2) for _  in range(7)])

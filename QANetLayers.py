@@ -60,8 +60,6 @@ class CausalSelfAttention(nn.Module):
         mask=mask.view(B, 1, 1, -1)
         # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
-        print("Shape of att: {}".format(att.shape))
-        print("Shape of mask: {}".format(mask.shape))
         att = att.masked_fill(mask == 0, -1e10) # todo: just use float('-inf') instead?
         att = F.softmax(att, dim=-1)
         att = self.attn_drop(att)
@@ -131,7 +129,6 @@ class Block(nn.Module):
 
 
     def forward(self, x, mask):
-        print("in the enc block")
         x = position_encoding(x)
         residual = x
 
@@ -161,12 +158,11 @@ class QANetOutput(nn.Module):
         self.w1 = QA_Conv1d(n_embd*2, 1)
         self.w2 = QA_Conv1d(n_embd*2, 1)
     def forward(self, M1, M2, M3, mask):
-        x1 = torch.cat((M1, M2), dim = 1)
-        x2 = torch.cat((M1, M3), dim = 1)
+        x1 = torch.cat((M1, M2), dim = 2).transpose(1,2)
+        x2 = torch.cat((M2, M3), dim = 2).transpose(1,2)
 
-        print("x1 shape in output layer: {}".format(x1.shape))
-        p1 = masked_softmax(self.w1(x1).squeeze(), mask, log_softmax = True)
-        p2 = masked_softmax(self.w2(x2).squeeze(), mask, log_softmax = True)
+        p1 = masked_softmax(self.w1(x1).transpose(1,2).squeeze(), mask, log_softmax = True)
+        p2 = masked_softmax(self.w2(x2).transpose(1,2).squeeze(), mask, log_softmax = True)
 
         return p1, p2
 
