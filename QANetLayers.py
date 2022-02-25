@@ -162,7 +162,7 @@ class QANetOutput(nn.Module):
         self.w2 = QA_Conv1d(n_embd*2, 1)
     def forward(self, M1, M2, M3, mask):
         x1 = torch.cat((M1, M2), dim = 1)
-        x2 = torch.cat((M2, M3), dim = 1)
+        x2 = torch.cat((M1, M3), dim = 1)
 
         print("x1 shape in output layer: {}".format(x1.shape))
         p1 = masked_softmax(self.w1(x1).squeeze(), mask, log_softmax = True)
