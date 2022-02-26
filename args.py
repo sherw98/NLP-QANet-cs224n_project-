@@ -170,7 +170,11 @@ def get_test_args():
                         type=str,
                         default='submission.csv',
                         help='Name for submission file.')
-
+    parser.add_argument('--model_type',
+                        type=str,
+                        default = "baseline",
+                        choices=('baseline', 'bidaf_char', 'QANet'),
+                        help='Model choice for training')
     # Require load_path for test.py
     args = parser.parse_args()
     if not args.load_path:

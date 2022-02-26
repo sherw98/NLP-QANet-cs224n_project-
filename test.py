@@ -43,8 +43,24 @@ def main(args):
 
     # Get model
     log.info('Building model...')
-    model = BiDAF(word_vectors=word_vectors,
-                  hidden_size=args.hidden_size)
+    if(args.model_type == "baseline"):
+        model = BiDAF(word_vectors=word_vectors,
+                    hidden_size=args.hidden_size,
+                    drop_prob=args.drop_prob)
+    elif(args.model_type == "bidaf_char"):
+        char_vectors = util.torch_from_json(args.char_emb_file)
+        model = BiDAF_character(word_vectors=word_vectors,
+                    char_vectors=char_vectors,
+                    hidden_size=args.hidden_size,
+                    drop_prob=args.drop_prob)
+    elif(args.model_type == "QANet"):
+        char_vectors = util.torch_from_json(args.char_emb_file)
+        model = QANet(word_vectors=word_vectors,
+                    char_vectors=char_vectors,
+                    hidden_size=48,
+                    drop_prob=args.drop_prob)
+    else:
+        raise Exception("Model provided not valid")
     model = nn.DataParallel(model, gpu_ids)
     log.info(f'Loading checkpoint from {args.load_path}...')
     model = util.load_model(model, args.load_path, gpu_ids, return_step=False)
@@ -78,7 +94,14 @@ def main(args):
             batch_size = cw_idxs.size(0)
 
             # Forward
-            log_p1, log_p2 = model(cw_idxs, qw_idxs)
+            if(args.model_type == "baseline"):
+                log_p1, log_p2 = model(cw_idxs, qw_idxs)
+            elif(args.model_type == "bidaf_char"):
+                log_p1, log_p2 = model(cw_idxs, qw_idxs, cc_idxs, qc_idxs)
+            elif(args.model_type == "QANet"):
+                log_p1, log_p2 = model(cw_idxs, qw_idxs, cc_idxs, qc_idxs)
+            else:
+                raise Exception("Model Type Invalid")
             y1, y2 = y1.to(device), y2.to(device)
             loss = F.nll_loss(log_p1, y1) + F.nll_loss(log_p2, y2)
             nll_meter.update(loss.item(), batch_size)
