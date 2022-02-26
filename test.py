@@ -46,19 +46,19 @@ def main(args):
     if(args.model_type == "baseline"):
         model = BiDAF(word_vectors=word_vectors,
                     hidden_size=args.hidden_size,
-                    drop_prob=args.drop_prob)
+                    drop_prob=0)
     elif(args.model_type == "bidaf_char"):
         char_vectors = util.torch_from_json(args.char_emb_file)
         model = BiDAF_character(word_vectors=word_vectors,
                     char_vectors=char_vectors,
                     hidden_size=args.hidden_size,
-                    drop_prob=args.drop_prob)
+                    drop_prob=0)
     elif(args.model_type == "QANet"):
         char_vectors = util.torch_from_json(args.char_emb_file)
         model = QANet(word_vectors=word_vectors,
                     char_vectors=char_vectors,
-                    hidden_size=48,
-                    drop_prob=args.drop_prob)
+                    hidden_size=args.hidden_size,,
+                    drop_prob=0)
     else:
         raise Exception("Model provided not valid")
     model = nn.DataParallel(model, gpu_ids)
@@ -91,7 +91,7 @@ def main(args):
             # Setup for forward
             cw_idxs = cw_idxs.to(device)
             qw_idxs = qw_idxs.to(device)
-            batch_size = cw_idxs.size(0)
+            batch_size = args.batch_size
 
             # Forward
             if(args.model_type == "baseline"):
