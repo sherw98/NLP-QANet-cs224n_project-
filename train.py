@@ -84,9 +84,14 @@ def main(args):
                                  log=log)
 
     # Get optimizer and scheduler
-    optimizer = optim.Adadelta(model.parameters(), args.lr,
-                               weight_decay=args.l2_wd)
-    scheduler = sched.LambdaLR(optimizer, lambda s: 1.)  # Constant LR
+    if(args.model_type == "QANet"):
+        optimizer = optim.Adam(model.parameters(), lr = args.lr,
+                               betas = (0.8, 0.999), eps = 1e-7, weight_decay=args.l2_wd)
+        scheduler = sched.LambdaLR(optimizer, lambda s: 1.)  # Constant LR
+    else:
+        optimizer = optim.Adadelta(model.parameters(), args.lr,
+                                weight_decay=args.l2_wd)
+        scheduler = sched.LambdaLR(optimizer, lambda s: 1.)  # Constant LR
 
     # Get data loader
     log.info('Building dataset...')
