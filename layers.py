@@ -62,10 +62,18 @@ class FullEmbedding(nn.Module):
         self.conv2d = nn.Sequential(
             nn.Conv2d(in_channels = char_vectors.size(1),
                       out_channels= hidden_size, 
-                      kernel_size = (1,7)),
+                      kernel_size = (1,5)),
             nn.ReLU(),
             nn.Dropout(drop_prob)
         )
+
+        self.conv1d = nn.Conv1d(in_channels= word_vector.size(1),
+                                out_channels= hidden_size,
+                                kernel_size = 5)
+
+        self.conv1d_final = nn.Conv1d(in_channels = 2*hiddne_size,
+                                      out_channels= hidden_size,
+                                      kernel_size = 5)
 
         self.proj_concat = nn.Linear(2*hidden_size, hidden_size, bias = False)
 
@@ -77,7 +85,8 @@ class FullEmbedding(nn.Module):
         # print("")
         # print("words_emb shape before proj: {}".format(words_emb.shape))
         words_emb = F.dropout(words_emb, self.drop_prob, self.training)
-        words_emb = self.proj_word(words_emb)  # (batch_size, seq_len, hidden_size) [64, 375, 100]
+        words_emb = self.conv1d(words_emb)
+        ##words_emb = self.proj_word(words_emb)  # (batch_size, seq_len, hidden_size) [64, 375, 100]
         
 
         # chars
@@ -93,17 +102,14 @@ class FullEmbedding(nn.Module):
         # print("")
         # print("chars_emb shape before conv: {}".format(chars_emb.shape)) # [64, 64, 375, 16]
         chars_emb = self.conv2d(chars_emb)
-        chars_emb, idx = torch.max(chars_emb, dim = 3) 
+        chars_emb = torch.max(chars_emb, dim = 3) 
         # print("")
-        # print("chars_emb after conv: {}".format(chars_emb.shape)) # [64,100,375]
-        # chars_emb = chars_emb.view(batch_size, seqlen, -1)  # (batch_size, seqlen , hidden_size)
-
-        # print("")
-        # print("chars emb after reshape: {}".format(chars_emb.shape))
-        # concated
-        concat_emb = torch.cat((words_emb, chars_emb.transpose(1,2)), dim = 2) # (batch_size, seq_len, 2*hidden_size)
         
-        concat_emb = self.proj_concat(concat_emb) # (batch_size, seq_len, hidden_size)
+        # concated
+        concat_emb = torch.cat((words_emb.transpose(1,2), chars_emb.transpose(1,2)), dim = 2) # (batch_size, seq_len, 2*hidden_size)
+        concat_emb = self.conv1d_final(concat_emb)
+
+        #concat_emb = self.proj_concat(concat_emb) # (batch_size, seq_len, hidden_size)
         # highway
         concat_emb = self.hwy(concat_emb)   # (batch_size, seq_len, hidden_size)
 
