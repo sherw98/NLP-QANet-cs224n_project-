@@ -71,7 +71,7 @@ class FullEmbedding(nn.Module):
                                 out_channels= hidden_size,
                                 kernel_size = 5)
 
-        self.conv1d_final = nn.Conv1d(in_channels = 2*hiddne_size,
+        self.conv1d_final = nn.Conv1d(in_channels = 2*hidden_size,
                                       out_channels= hidden_size,
                                       kernel_size = 5)
 
