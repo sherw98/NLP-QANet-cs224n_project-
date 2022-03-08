@@ -10,7 +10,7 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from util import masked_softmax
 
 class position_encoding(nn.Module):
-    def __init__(self, n_embd, device, seq_len = 400):
+    def __init__(self, n_embd, device, seq_len = 1000):
     # x shape is [batch size, seq_len, n_embd]
         super().__init__()
         pos_encodings = torch.zeros(seq_len, n_embd)
