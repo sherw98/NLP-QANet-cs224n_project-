@@ -130,7 +130,7 @@ class Block(nn.Module):
 
     
     def forward(self, x, mask):
-        x = position_encoding(x)
+        x = self.position_encoder(x)
         residual = x
 
         # convolution layers 
