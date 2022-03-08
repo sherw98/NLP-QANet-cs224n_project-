@@ -4,28 +4,28 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
 
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from util import masked_softmax
 
-def position_encoding(x):
+class position_encoding(nn.Module):
+    def __init__(self, n_embd, seq_len = 400, device):
     # x shape is [batch size, seq_len, n_embd]
-    seq_len = x.size(1)
-    n_embd = x.size(2)
 
-    pos_encodings = torch.zeros(seq_len, n_embd)
-    pos = torch.arange(seq_len).unsqueeze(1)
-    val = torch.exp(torch.arange(0, n_embd, 2) * -(math.log(10000.0) / n_embd))
+        pos_encodings = torch.zeros(seq_len, n_embd)
+        pos = torch.arange(seq_len).unsqueeze(1)
+        val = torch.exp(torch.arange(0, n_embd, 2) * -(math.log(10000.0) / n_embd))
 
-    pos_encodings[:, 0::2] = torch.sin(pos * val)
-    pos_encodings[:, 1::2] = torch.cos(pos*val)
-    pos_encodings = pos_encodings.unsqueeze(0) # [1, seq_len, n_embd]
+        pos_encodings[:, 0::2] = torch.sin(pos * val)
+        pos_encodings[:, 1::2] = torch.cos(pos*val)
+        pos_encodings = pos_encodings.unsqueeze(0).to(device) # [1, seq_len, n_embd]
 
-    return x + pos_encodings.to(x.get_device())
+        self.register_buffer('pos_encodings', pos_encodings)
+    def forward(self, x):
 
-def get_sin_cos(seq_len, n_embd):
-    position = torch.arange(seq_len)
-    
+        return x + Variable(self.pos_encodings[:, :x.shape[1]], requires_grad = False)
+
 
 
 class CausalSelfAttention(nn.Module):
@@ -94,10 +94,11 @@ class QA_Conv1d(nn.Module):
 class Block(nn.Module):
     """ an QANet Transformer block with Conv nets"""
 
-    def __init__(self, hidden_size, resid_pdrop, num_convs):
+    def __init__(self, hidden_size, resid_pdrop, num_convs, device):
         super(Block, self).__init__()
 
         self.num_convs = num_convs
+        self.position_encoder = position_encoding(hidden_size, device)
         self.conv_ln = nn.LayerNorm(hidden_size)
         self.convolution = nn.Sequential(
             nn.Conv1d(in_channels = hidden_size, 
@@ -127,7 +128,7 @@ class Block(nn.Module):
         self.ff_1 = QA_Conv1d(hidden_size, hidden_size, relu= True, bias = True)
         self.ff_2 = QA_Conv1d(hidden_size, hidden_size, bias = True)
 
-
+    
     def forward(self, x, mask):
         x = position_encoding(x)
         residual = x
@@ -141,11 +142,13 @@ class Block(nn.Module):
 
         # multihead attn
         x = self.attn_ln(x)
+        x = F.dropout(x, p = 0.2, training = self.training)
         x = x + self.attn(x, mask) + residual
         residual = x
 
         # feedforwards
         x = self.ff_ln(x)
+        x = F.dropout(x, p = 0.2, training = self.training)
         x = self.ff_1(x.transpose(1,2)).transpose(1,2)
         x = self.ff_2(x.transpose(1,2)).transpose(1,2)
         x += residual

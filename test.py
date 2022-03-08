@@ -58,7 +58,8 @@ def main(args):
         model = QANet(word_vectors=word_vectors,
                     char_vectors=char_vectors,
                     hidden_size=args.hidden_size,
-                    drop_prob=0)
+                    drop_prob=0, 
+                    device = device)
     else:
         raise Exception("Model provided not valid")
     model = nn.DataParallel(model, gpu_ids)

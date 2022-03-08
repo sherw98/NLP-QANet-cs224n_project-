@@ -157,7 +157,7 @@ class QANet(nn.Module):
         hidden_size (int): Number of features in the hidden state at each layer.
         drop_prob (float): Dropout probability.
     """
-    def __init__(self, word_vectors, char_vectors, hidden_size, drop_prob=0.):
+    def __init__(self, word_vectors, char_vectors, hidden_size, drop_prob=0.2, device):
         super(QANet, self).__init__()
         self.emb = layers.FullEmbedding(word_vectors=word_vectors,
                                         char_vectors=char_vectors,
@@ -166,7 +166,8 @@ class QANet(nn.Module):
 
         self.enc_blocks = QANetLayers.Block(hidden_size = hidden_size, 
                                             resid_pdrop = drop_prob, 
-                                            num_convs= 4) 
+                                            num_convs= 4, 
+                                            device = device) 
         
         self.att = layers.BiDAFAttention(hidden_size=hidden_size,
                                          drop_prob=drop_prob)
