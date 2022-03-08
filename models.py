@@ -175,7 +175,8 @@ class QANet(nn.Module):
         self.attn_resizer = QANetLayers.QA_Conv1d(4*hidden_size, hidden_size)
         self.mod_enc_blocks = nn.ModuleList([QANetLayers.Block(hidden_size = hidden_size,
                                                                 resid_pdrop = drop_prob,
-                                                                num_convs = 2) for _  in range(7)])
+                                                                num_convs = 2,
+                                                                device = device) for _  in range(7)])
 
         self.out = QANetLayers.QANetOutput(hidden_size)
 
