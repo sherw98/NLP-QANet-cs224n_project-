@@ -12,7 +12,7 @@ from util import masked_softmax
 class position_encoding(nn.Module):
     def __init__(self, n_embd, device, seq_len = 400):
     # x shape is [batch size, seq_len, n_embd]
-
+        super().__init__()
         pos_encodings = torch.zeros(seq_len, n_embd)
         pos = torch.arange(seq_len).unsqueeze(1)
         val = torch.exp(torch.arange(0, n_embd, 2) * -(math.log(10000.0) / n_embd))
