@@ -74,7 +74,7 @@ class QA_Conv1d(nn.Module):
     """ Conv layer for QA Net"""
     def __init__(self, in_channels, out_channels, kernel_size = 1,
                  stride = 1, padding = 0, groups = 1, relu = False, bias = False):
-        super().__init__()
+        super().__init__() 
 
         self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, 
                             stride=stride, padding = padding, groups = groups, bias=bias)
@@ -142,13 +142,13 @@ class Block(nn.Module):
 
         # multihead attn
         x = self.attn_ln(x)
-        x = F.dropout(x, p = 0.1, training = self.training)
+        x = F.dropout(x, p = 0.05, training = self.training)
         x = x + self.attn(x, mask) + residual
         residual = x
 
         # feedforwards
         x = self.ff_ln(x)
-        x = F.dropout(x, p = 0.1, training = self.training)
+        x = F.dropout(x, p = 0.05, training = self.training)
         x = self.ff_1(x.transpose(1,2)).transpose(1,2)
         x = self.ff_2(x.transpose(1,2)).transpose(1,2)
         x += residual
@@ -169,47 +169,3 @@ class QANetOutput(nn.Module):
 
         return p1, p2
 
-
-# class QANetEncoder(nn.Module):
-#     """Transformer-based encoding layer specific to QANet.
-
-#     Args:
-#         input_size (int): Size of a single timestep in the input.
-#         hidden_size (int): Size of the RNN hidden state.
-#         num_conv_layers (int): Number of convolution layers for transformer blocks to use
-#         num_transformer_blocks (int): Number of transformer blocks to use
-#         drop_prob (float): Probability of zero-ing out activations.
-#     """
-#     def __init__(self,
-#                  input_size,
-#                  hidden_size,
-#                  num_conv_layers=4,
-#                  num_transformer_blocks,
-#                  drop_prob=0.):
-#         super(QANetEncoder, self).__init__()
-
-#         self.drop_prob = drop_prob
-#         self.num_conv_layers = num_conv_layers
-        
-
-#     def forward(self, x, lengths):
-#         # Save original padded length for use by pad_packed_sequence
-#         orig_len = x.size(1)
-
-#         # Sort by length and pack sequence for RNN
-#         lengths, sort_idx = lengths.sort(0, descending=True)
-#         x = x[sort_idx]     # (batch_size, seq_len, input_size)
-#         x = pack_padded_sequence(x, lengths.cpu(), batch_first=True)
-
-#         # Apply RNN
-#         x, _ = self.rnn(x)  # (batch_size, seq_len, 2 * hidden_size)
-
-#         # Unpack and reverse sort
-#         x, _ = pad_packed_sequence(x, batch_first=True, total_length=orig_len)
-#         _, unsort_idx = sort_idx.sort(0)
-#         x = x[unsort_idx]   # (batch_size, seq_len, 2 * hidden_size)
-
-#         # Apply dropout (RNN applies dropout after all but the last layer)
-#         x = F.dropout(x, self.drop_prob, self.training)
-
-#         return x

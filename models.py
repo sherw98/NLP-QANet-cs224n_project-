@@ -157,7 +157,7 @@ class QANet(nn.Module):
         hidden_size (int): Number of features in the hidden state at each layer.
         drop_prob (float): Dropout probability.
     """
-    def __init__(self, word_vectors, char_vectors, hidden_size, device, drop_prob=0.1):
+    def __init__(self, word_vectors, char_vectors, hidden_size, device, drop_prob=0.05):
         super(QANet, self).__init__()
         self.emb = layers.FullEmbedding(word_vectors=word_vectors,
                                         char_vectors=char_vectors,
@@ -198,17 +198,17 @@ class QANet(nn.Module):
 
         # model encoder blocks
         att = self.attn_resizer(att.transpose(1,2)).transpose(1,2)
-        att = F.dropout(att, 0.1, self.training)
+        att = F.dropout(att, 0.05, self.training)
         for block in self.mod_enc_blocks:
             att = block(att, c_mask)        # (batch_size, c_len, 2 * hidden_size)
         mod1 = att
 
-        att = F.dropout(att, 0.1, self.training)
+        att = F.dropout(att, 0.05, self.training)
         for block in self.mod_enc_blocks:
             att = block(att, c_mask)
         mod2 = att
 
-        att = F.dropout(att, 0.1, self.training)
+        att = F.dropout(att, 0.05, self.training)
         for block in self.mod_enc_blocks:
             att = block(att, c_mask)
 
