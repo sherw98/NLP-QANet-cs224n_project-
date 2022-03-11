@@ -142,13 +142,13 @@ class Block(nn.Module):
 
         # multihead attn
         x = self.attn_ln(x)
-        x = F.dropout(x, p = 0.2, training = self.training)
+        x = F.dropout(x, p = 0.1, training = self.training)
         x = x + self.attn(x, mask) + residual
         residual = x
 
         # feedforwards
         x = self.ff_ln(x)
-        x = F.dropout(x, p = 0.2, training = self.training)
+        x = F.dropout(x, p = 0.1, training = self.training)
         x = self.ff_1(x.transpose(1,2)).transpose(1,2)
         x = self.ff_2(x.transpose(1,2)).transpose(1,2)
         x += residual
