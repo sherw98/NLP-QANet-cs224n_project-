@@ -200,7 +200,7 @@ class BiDAFAttention(nn.Module):
         hidden_size (int): Size of hidden activations.
         drop_prob (float): Probability of zero-ing out activations.
     """
-    def __init__(self, hidden_size, drop_prob=0.05):
+    def __init__(self, hidden_size, drop_prob=0.1):
         super(BiDAFAttention, self).__init__()
         self.drop_prob = drop_prob
         self.c_weight = nn.Parameter(torch.zeros(hidden_size, 1))

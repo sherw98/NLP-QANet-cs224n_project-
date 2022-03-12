@@ -120,7 +120,7 @@ class Block(nn.Module):
         self.attn_ln = nn.LayerNorm(hidden_size)        
         self.attn = CausalSelfAttention(n_embd = hidden_size, 
                                         n_head = 8, 
-                                        attn_pdrop = 0.2,
+                                        attn_pdrop = 0.1,
                                         resid_pdrop = resid_pdrop,
                                         block_size =  128)
         
@@ -142,13 +142,13 @@ class Block(nn.Module):
 
         # multihead attn
         x = self.attn_ln(x)
-        x = F.dropout(x, p = 0.05, training = self.training)
+        x = F.dropout(x, p = 0.1, training = self.training)
         x = x + self.attn(x, mask) + residual
         residual = x
 
         # feedforwards
         x = self.ff_ln(x)
-        x = F.dropout(x, p = 0.05, training = self.training)
+        x = F.dropout(x, p = 0.1, training = self.training)
         x = self.ff_1(x.transpose(1,2)).transpose(1,2)
         x = self.ff_2(x.transpose(1,2)).transpose(1,2)
         x += residual
