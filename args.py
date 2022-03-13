@@ -175,10 +175,16 @@ def get_test_args():
                         default = "baseline",
                         choices=('baseline', 'bidaf_char', 'QANet'),
                         help='Model choice for training')
+    parser.add_argument('--ensemble_list',
+                        type=str,
+                        nargs = "+",
+                        help='Model best path tars for ensemble',
+                        default = [])
+
     # Require load_path for test.py
     args = parser.parse_args()
-    if not args.load_path:
-        raise argparse.ArgumentError('Missing required argument --load_path')
+    if not args.load_path and not args.ensemble_list:
+        raise argparse.ArgumentError('Missing required argument --load_path or --ensemble_list')
 
     return args
 

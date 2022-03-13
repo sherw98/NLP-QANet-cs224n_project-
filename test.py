@@ -55,107 +55,233 @@ def main(args):
                     drop_prob=0)
     elif(args.model_type == "QANet"):
         char_vectors = util.torch_from_json(args.char_emb_file)
+
         model = QANet(word_vectors=word_vectors,
-                    char_vectors=char_vectors,
-                    hidden_size=args.hidden_size,
-                    drop_prob=0, 
-                    device = device)
+                            char_vectors=char_vectors,
+                            hidden_size=args.hidden_size,
+                            drop_prob=0, 
+                            device = device)
+        
+
+        
     else:
         raise Exception("Model provided not valid")
-    model = nn.DataParallel(model, gpu_ids)
-    log.info(f'Loading checkpoint from {args.load_path}...')
-    model = util.load_model(model, args.load_path, gpu_ids, return_step=False)
-    model = model.to(device)
-    model.eval()
+    if(len(args.ensemble_list) != 0):
 
-    # Get data loader
-    log.info('Building dataset...')
-    record_file = vars(args)[f'{args.split}_record_file']
-    dataset = SQuAD(record_file, args.use_squad_v2)
-    data_loader = data.DataLoader(dataset,
-                                  batch_size=args.batch_size,
-                                  shuffle=False,
-                                  num_workers=args.num_workers,
-                                  collate_fn=collate_fn)
 
-    # Evaluate
-    log.info(f'Evaluating on {args.split} split...')
-    nll_meter = util.AverageMeter()
-    pred_dict = {}  # Predictions for TensorBoard
-    sub_dict = {}   # Predictions for submission
-    eval_file = vars(args)[f'{args.split}_eval_file']
-    with open(eval_file, 'r') as fh:
-        gold_dict = json_load(fh)
-    with torch.no_grad(), \
-            tqdm(total=len(dataset)) as progress_bar:
-        for cw_idxs, cc_idxs, qw_idxs, qc_idxs, y1, y2, ids in data_loader:
-            # Setup for forward
-            cw_idxs = cw_idxs.to(device)
-            qw_idxs = qw_idxs.to(device)
-            batch_size = args.batch_size
+        # Get data loader
+        log.info('Building dataset...')
+        record_file = vars(args)[f'{args.split}_record_file']
+        dataset = SQuAD(record_file, args.use_squad_v2)
+        data_loader = data.DataLoader(dataset,
+                                    batch_size=args.batch_size,
+                                    shuffle=False,
+                                    num_workers=args.num_workers,
+                                    collate_fn=collate_fn)
 
-            # Forward
-            if(args.model_type == "baseline"):
-                log_p1, log_p2 = model(cw_idxs, qw_idxs)
-            elif(args.model_type == "bidaf_char"):
-                log_p1, log_p2 = model(cw_idxs, qw_idxs, cc_idxs, qc_idxs)
-            elif(args.model_type == "QANet"):
-                log_p1, log_p2 = model(cw_idxs, qw_idxs, cc_idxs, qc_idxs)
-            else:
-                raise Exception("Model Type Invalid")
-            y1, y2 = y1.to(device), y2.to(device)
-            loss = F.nll_loss(log_p1, y1) + F.nll_loss(log_p2, y2)
-            nll_meter.update(loss.item(), batch_size)
+        # Evaluate
+        log.info(f'Evaluating on {args.split} split...')
+        nll_meter = util.AverageMeter()
+        pred_dict = {}  # Predictions for TensorBoard
+        sub_dict = {}   # Predictions for submission
+        eval_file = vars(args)[f'{args.split}_eval_file']
+        with open(eval_file, 'r') as fh:
+            gold_dict = json_load(fh)
+        with torch.no_grad(), \
+                tqdm(total=len(dataset)) as progress_bar:
+            for cw_idxs, cc_idxs, qw_idxs, qc_idxs, y1, y2, ids in data_loader:
+                cw_idxs = cw_idxs.to(device)
+                qw_idxs = qw_idxs.to(device)
+                batch_size = args.batch_size
 
-            # Get F1 and EM scores
-            p1, p2 = log_p1.exp(), log_p2.exp()
-            starts, ends = util.discretize(p1, p2, args.max_ans_len, args.use_squad_v2)
+                avg_log_p1 = torch.zeros(cw_idxs.size())
+                avg_log_p2 = torch.zeros(cw_idxs.size())
+                # to device
+                avg_log_p1, avg_log_p2 = avg_log_p1.to_device(device), avg_log_p2.to_device(device)
 
-            # Log info
-            progress_bar.update(batch_size)
-            if args.split != 'test':
-                # No labels for the test set, so NLL would be invalid
-                progress_bar.set_postfix(NLL=nll_meter.avg)
+                for load_path in args.ensemble_list:
 
-            idx2pred, uuid2pred = util.convert_tokens(gold_dict,
-                                                      ids.tolist(),
-                                                      starts.tolist(),
-                                                      ends.tolist(),
-                                                      args.use_squad_v2)
-            pred_dict.update(idx2pred)
-            sub_dict.update(uuid2pred)
+                    model = nn.DataParallel(model, gpu_ids)
+                    log.info(f'Loading checkpoint from {load_path}...')
+                    model = util.load_model(model, load_path, gpu_ids, return_step=False)
+                    model = model.to(device)
+                    model.eval()
+                    if(args.model_type == "baseline"):
+                        log_p1, log_p2 = model(cw_idxs, qw_idxs)
+                    elif(args.model_type == "bidaf_char"):
+                        log_p1, log_p2 = model(cw_idxs, qw_idxs, cc_idxs, qc_idxs)
+                    elif(args.model_type == "QANet"):
+                        log_p1, log_p2 = model(cw_idxs, qw_idxs, cc_idxs, qc_idxs)
+                    else:
+                        raise Exception("Model Type Invalid")
+                    avg_log_p1 = avg_log_p1 + log_p1
+                    avg_log_p2 = avg_log_p2 + log_p2
+                # Setup for forward
 
-    # Log results (except for test set, since it does not come with labels)
-    if args.split != 'test':
-        results = util.eval_dicts(gold_dict, pred_dict, args.use_squad_v2)
-        results_list = [('NLL', nll_meter.avg),
-                        ('F1', results['F1']),
-                        ('EM', results['EM'])]
-        if args.use_squad_v2:
-            results_list.append(('AvNA', results['AvNA']))
-        results = OrderedDict(results_list)
 
-        # Log to console
-        results_str = ', '.join(f'{k}: {v:05.2f}' for k, v in results.items())
-        log.info(f'{args.split.title()} {results_str}')
+                # Forward
+                avg_log_p1 /= len(args.ensemble_list)
+                avg_log_p2 /= len(args.ensemble_list)
 
-        # Log to TensorBoard
-        tbx = SummaryWriter(args.save_dir)
-        util.visualize(tbx,
-                       pred_dict=pred_dict,
-                       eval_path=eval_file,
-                       step=0,
-                       split=args.split,
-                       num_visuals=args.num_visuals)
+                p1, p2 = avg_log_p1.exp(), avg_log_p2.exp()
+                y1, y2 = y1.to(device), y2.to(device)
+                loss = F.nll_loss(avg_log_p1, y1) + F.nll_loss(avg_log_p2, y2)
+                nll_meter.update(loss.item(), batch_size)
 
-    # Write submission file
-    sub_path = join(args.save_dir, args.split + '_' + args.sub_file)
-    log.info(f'Writing submission file to {sub_path}...')
-    with open(sub_path, 'w', newline='', encoding='utf-8') as csv_fh:
-        csv_writer = csv.writer(csv_fh, delimiter=',')
-        csv_writer.writerow(['Id', 'Predicted'])
-        for uuid in sorted(sub_dict):
-            csv_writer.writerow([uuid, sub_dict[uuid]])
+
+                # Get F1 and EM scores
+
+                starts, ends = util.discretize(p1, p2, args.max_ans_len, args.use_squad_v2)
+
+                # Log info
+                progress_bar.update(batch_size)
+                if args.split != 'test':
+                    # No labels for the test set, so NLL would be invalid
+                    progress_bar.set_postfix(NLL=nll_meter.avg)
+
+                idx2pred, uuid2pred = util.convert_tokens(gold_dict,
+                                                        ids.tolist(),
+                                                        starts.tolist(),
+                                                        ends.tolist(),
+                                                        args.use_squad_v2)
+                pred_dict.update(idx2pred)
+                sub_dict.update(uuid2pred)
+
+        # Log results (except for test set, since it does not come with labels)
+        if args.split != 'test':
+            results = util.eval_dicts(gold_dict, pred_dict, args.use_squad_v2)
+            results_list = [('NLL', nll_meter.avg),
+                            ('F1', results['F1']),
+                            ('EM', results['EM'])]
+            if args.use_squad_v2:
+                results_list.append(('AvNA', results['AvNA']))
+            results = OrderedDict(results_list)
+
+            # Log to console
+            results_str = ', '.join(f'{k}: {v:05.2f}' for k, v in results.items())
+            log.info(f'{args.split.title()} {results_str}')
+
+            # Log to TensorBoard
+            tbx = SummaryWriter(args.save_dir)
+            util.visualize(tbx,
+                        pred_dict=pred_dict,
+                        eval_path=eval_file,
+                        step=0,
+                        split=args.split,
+                        num_visuals=args.num_visuals)
+
+        # Write submission file
+        sub_path = join(args.save_dir, args.split + '_' + args.sub_file)
+        log.info(f'Writing submission file to {sub_path}...')
+        with open(sub_path, 'w', newline='', encoding='utf-8') as csv_fh:
+            csv_writer = csv.writer(csv_fh, delimiter=',')
+            csv_writer.writerow(['Id', 'Predicted'])
+            for uuid in sorted(sub_dict):
+                csv_writer.writerow([uuid, sub_dict[uuid]])
+                
+    else: # ensemble version 
+        model = nn.DataParallel(model, gpu_ids)
+        log.info(f'Loading checkpoint from {args.load_path}...')
+        
+
+        # Get data loader
+        log.info('Building dataset...')
+        record_file = vars(args)[f'{args.split}_record_file']
+        dataset = SQuAD(record_file, args.use_squad_v2)
+        data_loader = data.DataLoader(dataset,
+                                    batch_size=args.batch_size,
+                                    shuffle=False,
+                                    num_workers=args.num_workers,
+                                    collate_fn=collate_fn)
+
+        # Evaluate
+        log.info(f'Evaluating on {args.split} split...')
+        nll_meter = util.AverageMeter()
+        pred_dict = {}  # Predictions for TensorBoard
+        sub_dict = {}   # Predictions for submission
+        eval_file = vars(args)[f'{args.split}_eval_file']
+        with open(eval_file, 'r') as fh:
+            gold_dict = json_load(fh)
+
+        prob_results = []
+        for model_path in args.ensemble_list:
+            model = util.load_model(model, model_path, gpu_ids, return_step=False)
+            model = model.to(device)
+            model.eval()
+
+            with torch.no_grad(), \
+                    tqdm(total=len(dataset)) as progress_bar:
+                for cw_idxs, cc_idxs, qw_idxs, qc_idxs, y1, y2, ids in data_loader:
+                    # Setup for forward
+                    cw_idxs = cw_idxs.to(device)
+                    qw_idxs = qw_idxs.to(device)
+                    batch_size = args.batch_size
+
+                    # Forward
+                    if(args.model_type == "baseline"):
+                        log_p1, log_p2 = model(cw_idxs, qw_idxs)
+                    elif(args.model_type == "bidaf_char"):
+                        log_p1, log_p2 = model(cw_idxs, qw_idxs, cc_idxs, qc_idxs)
+                    elif(args.model_type == "QANet"):
+                        log_p1, log_p2 = model(cw_idxs, qw_idxs, cc_idxs, qc_idxs)
+                    else:
+                        raise Exception("Model Type Invalid")
+                    y1, y2 = y1.to(device), y2.to(device)
+                    loss = F.nll_loss(log_p1, y1) + F.nll_loss(log_p2, y2)
+                    nll_meter.update(loss.item(), batch_size)
+
+                    # Get F1 and EM scores
+                    p1, p2 = log_p1.exp(), log_p2.exp()
+                    prob_results.append(tuple(p1,p2))
+        
+                starts, ends = util.discretize(p1, p2, args.max_ans_len, args.use_squad_v2)
+
+                # Log info
+                progress_bar.update(batch_size)
+                if args.split != 'test':
+                    # No labels for the test set, so NLL would be invalid
+                    progress_bar.set_postfix(NLL=nll_meter.avg)
+
+                idx2pred, uuid2pred = util.convert_tokens(gold_dict,
+                                                        ids.tolist(),
+                                                        starts.tolist(),
+                                                        ends.tolist(),
+                                                        args.use_squad_v2)
+                pred_dict.update(idx2pred)
+                sub_dict.update(uuid2pred)
+
+        # Log results (except for test set, since it does not come with labels)
+        if args.split != 'test':
+            results = util.eval_dicts(gold_dict, pred_dict, args.use_squad_v2)
+            results_list = [('NLL', nll_meter.avg),
+                            ('F1', results['F1']),
+                            ('EM', results['EM'])]
+            if args.use_squad_v2:
+                results_list.append(('AvNA', results['AvNA']))
+            results = OrderedDict(results_list)
+
+            # Log to console
+            results_str = ', '.join(f'{k}: {v:05.2f}' for k, v in results.items())
+            log.info(f'{args.split.title()} {results_str}')
+
+            # Log to TensorBoard
+            tbx = SummaryWriter(args.save_dir)
+            util.visualize(tbx,
+                        pred_dict=pred_dict,
+                        eval_path=eval_file,
+                        step=0,
+                        split=args.split,
+                        num_visuals=args.num_visuals)
+
+        # Write submission file
+        sub_path = join(args.save_dir, args.split + '_' + args.sub_file)
+        log.info(f'Writing submission file to {sub_path}...')
+        with open(sub_path, 'w', newline='', encoding='utf-8') as csv_fh:
+            csv_writer = csv.writer(csv_fh, delimiter=',')
+            csv_writer.writerow(['Id', 'Predicted'])
+            for uuid in sorted(sub_dict):
+                csv_writer.writerow([uuid, sub_dict[uuid]])
+
 
 
 if __name__ == '__main__':
