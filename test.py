@@ -97,7 +97,7 @@ def main(args):
                 avg_log_p1 = torch.zeros(cw_idxs.size())
                 avg_log_p2 = torch.zeros(cw_idxs.size())
                 # to device
-                avg_log_p1, avg_log_p2 = avg_log_p1.to_device(device), avg_log_p2.to_device(device)
+                avg_log_p1, avg_log_p2 = avg_log_p1.to(device), avg_log_p2.to(device)
 
                 for load_path in args.ensemble_list:
 
