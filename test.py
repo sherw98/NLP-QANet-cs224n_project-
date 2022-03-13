@@ -100,7 +100,26 @@ def main(args):
                 avg_log_p1, avg_log_p2 = avg_log_p1.to(device), avg_log_p2.to(device)
 
                 for load_path in args.ensemble_list:
+                    if(args.model_type == "baseline"):
+                        model = BiDAF(word_vectors=word_vectors,
+                                    hidden_size=args.hidden_size,
+                                    drop_prob=0)
+                    elif(args.model_type == "bidaf_char"):
+                        char_vectors = util.torch_from_json(args.char_emb_file)
+                        model = BiDAF_character(word_vectors=word_vectors,
+                                    char_vectors=char_vectors,
+                                    hidden_size=args.hidden_size,
+                                    drop_prob=0)
+                    elif(args.model_type == "QANet"):
+                        char_vectors = util.torch_from_json(args.char_emb_file)
 
+                        model = QANet(word_vectors=word_vectors,
+                                            char_vectors=char_vectors,
+                                            hidden_size=args.hidden_size,
+                                            drop_prob=0, 
+                                            device = device) 
+                    else:          
+                        raise Exception("Model provided not valid")         
                     model = nn.DataParallel(model, gpu_ids)
                     log.info(f'Loading checkpoint from {load_path}...')
                     model = util.load_model(model, load_path, gpu_ids, return_step=False)
