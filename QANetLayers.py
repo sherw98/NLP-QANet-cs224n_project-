@@ -24,7 +24,8 @@ class position_encoding(nn.Module):
         self.register_buffer('pos_encodings', pos_encodings)
     def forward(self, x):
 
-        return x + Variable(self.pos_encodings[:, :x.shape[1]], requires_grad = False)
+        return x + Variable(self.pos_encodings[:, :x.shape[1]], 
+                            requires_grad = False)
 
 
 
@@ -70,27 +71,6 @@ class CausalSelfAttention(nn.Module):
         y = self.resid_drop(self.proj(y))
         return y
 
-class QA_Conv1d(nn.Module):
-    """ Conv layer for QA Net"""
-    def __init__(self, in_channels, out_channels, kernel_size = 1,
-                 stride = 1, padding = 0, groups = 1, relu = False, bias = False):
-        super().__init__()
-
-        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, 
-                            stride=stride, padding = padding, groups = groups, bias=bias)
-        if relu:
-            self.relu = nn.ReLU()
-            nn.init.kaiming_normal_(self.conv.weight, nonlinearity = "relu")
-        else:
-            self.relu = None
-            nn.init.xavier_uniform_(self.conv.weight)
-    
-    def forward(self, x):
-        if self.relu:
-            return F.relu(self.conv(x))
-        else:
-            return self.conv(x)
-
 class Block(nn.Module):
     """ an QANet Transformer block with Conv nets"""
 
@@ -125,9 +105,11 @@ class Block(nn.Module):
                                         block_size =  128)
         
         self.ff_ln = nn.LayerNorm(hidden_size)
-        self.ff_1 = QA_Conv1d(hidden_size, hidden_size, relu= True, bias = True)
-        self.ff_2 = QA_Conv1d(hidden_size, hidden_size, bias = True)
-
+        self.ff_1 = nn.Linear(hidden_size, hidden_size, bias = True)
+        self.ff_relu = nn.ReLU()
+        self.ff_2 = nn.Linear(hidden_size, hidden_size, bias = True)
+        nn.init.xavier_uniform_(self.ff_1.weight)
+        nn.init.xavier_uniform_(self.ff_2.weight)
     
     def forward(self, x, mask):
         x = self.position_encoder(x)
@@ -149,8 +131,9 @@ class Block(nn.Module):
         # feedforwards
         x = self.ff_ln(x)
         x = F.dropout(x, p = 0.1, training = self.training)
-        x = self.ff_1(x.transpose(1,2)).transpose(1,2)
-        x = self.ff_2(x.transpose(1,2)).transpose(1,2)
+        x = self.ff_1(x)
+        x = self.ff_relu(x)
+        x = self.ff_2(x)
         x += residual
         
         return x
@@ -158,14 +141,14 @@ class Block(nn.Module):
 class QANetOutput(nn.Module):
     def __init__(self, n_embd):
         super(QANetOutput, self).__init__()
-        self.w1 = QA_Conv1d(n_embd*2, 1)
-        self.w2 = QA_Conv1d(n_embd*2, 1)
+        self.w1 = nn.Linear(n_embd*2, 1, bias = False)
+        self.w2 = nn.Linear(n_embd*2, 1, bias = False)
     def forward(self, M1, M2, M3, mask):
-        x1 = torch.cat((M1, M2), dim = 2).transpose(1,2)
-        x2 = torch.cat((M2, M3), dim = 2).transpose(1,2)
+        x1 = torch.cat((M1, M2), dim = 2)
+        x2 = torch.cat((M2, M3), dim = 2)
 
-        p1 = masked_softmax(self.w1(x1).transpose(1,2).squeeze(), mask, log_softmax = True)
-        p2 = masked_softmax(self.w2(x2).transpose(1,2).squeeze(), mask, log_softmax = True)
+        p1 = masked_softmax(self.w1(x1).squeeze(), mask, log_softmax = True)
+        p2 = masked_softmax(self.w2(x2).squeeze(), mask, log_softmax = True)
 
         return p1, p2
 
