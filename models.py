@@ -172,7 +172,7 @@ class QANet(nn.Module):
         self.att = layers.BiDAFAttention(hidden_size=hidden_size,
                                          drop_prob=drop_prob)
 
-        self.attn_resizer = QANetLayers.QA_Conv1d(4*hidden_size, hidden_size)
+        self.attn_resizer = nn.Linear(4*hidden_size, hidden_size, bias = False)
         self.mod_enc_blocks = nn.ModuleList([QANetLayers.Block(hidden_size = hidden_size,
                                                                 resid_pdrop = drop_prob,
                                                                 num_convs = 2,
@@ -197,7 +197,7 @@ class QANet(nn.Module):
 
 
         # model encoder blocks
-        att = self.attn_resizer(att.transpose(1,2)).transpose(1,2)
+        att = self.attn_resizer(att)
         att = F.dropout(att, 0.1, self.training)
         for block in self.mod_enc_blocks:
             att = block(att, c_mask)        # (batch_size, c_len, 2 * hidden_size)
